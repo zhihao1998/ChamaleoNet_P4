@@ -34,30 +34,11 @@ control Ingress(
     }
 
     @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
-    table icmp_flow {
+    table active_host_tbl {
         key = {
-            hdr.ipv4.src_addr              : ternary;
-            hdr.ipv4.dst_addr              : ternary;
-        }
-        
-        actions = {
-            set_egress_port; 
-            send_to_cpu;
-            send_to_nf;
-            drop;
-        }
-        default_action = send_to_nf();
-        size = 500;
-        idle_timeout = true;
-    }
-    
-    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
-    table tcp_flow {
-        key = {
-            hdr.ipv4.src_addr              : ternary;
-            hdr.ipv4.dst_addr              : ternary;
-            hdr.tcp.src_port               : exact;
-            hdr.tcp.dst_port               : exact;
+            meta.internal_ip   : exact;
+            meta.internal_port : exact;
+            meta.ip_protocol   : exact;
         }
         
         actions = {
@@ -71,37 +52,44 @@ control Ingress(
         idle_timeout = true;
     }
     
-    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
-    table udp_flow {
-        key = {
-            hdr.ipv4.src_addr              : ternary;
-            hdr.ipv4.dst_addr              : ternary;
-            hdr.udp.src_port               : exact;
-            hdr.udp.dst_port               : exact;
-        }
-        
-        actions = {
-            set_egress_port; 
-            send_to_cpu;
-            send_to_nf;
-            drop;
-        }
-        default_action = send_to_nf();
-        size = DEFAULT_TABLE_SIZE;
-        idle_timeout = true;
+    action set_src_internal() {
+        meta.internal_ip = meta.src_ip;
+        meta.internal_port = meta.src_port;
     }
-    
+
+    action set_dst_internal() {
+        meta.internal_ip = meta.dst_ip;
+        meta.internal_port = meta.dst_port;
+    }
+
+    table internal_ip_check {
+        key = {
+            hdr.ipv4.src_addr : ternary;
+            hdr.ipv4.dst_addr : ternary;
+        }
+        actions = {
+            set_src_internal();
+            set_dst_internal();
+            NoAction;
+        }
+        size = 10;
+        const default_action = NoAction();
+        const entries = {
+            (INTERNAL_NET &&& INTERNAL_NET_MASK, _) : set_src_internal();
+            (_, INTERNAL_NET &&& INTERNAL_NET_MASK) : set_dst_internal();
+        }
+    }
+
     apply {
-        if (hdr.ipv4.isValid()) {
-            if (hdr.icmp.isValid()){
-                icmp_flow.apply();
+        if (hdr.ipv4.isValid())
+        {
+            if (internal_ip_check.apply().hit) {
+                active_host_tbl.apply();
             }
-            else if (hdr.tcp.isValid()){
-                tcp_flow.apply();
-            }
-            else if (hdr.udp.isValid()){
-                udp_flow.apply();
+            else {
+                drop();
             }
         }
+
     }
 }

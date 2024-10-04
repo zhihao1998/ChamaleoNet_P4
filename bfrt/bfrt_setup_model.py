@@ -70,15 +70,15 @@ CPU_PORT_1 = 64
 
 # TODO from yaml
 # enable internal CPU ports
-pm.port.add(DEV_PORT=64, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
-pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
+# pm.port.add(DEV_PORT=64, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
+# pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
 
-# front panel port 2/0 directly attached to server
-pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# # front panel port 2/0 directly attached to server
+# pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
-# front panel port 31/0 directly connected to 32/0
-pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
-pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# # front panel port 31/0 directly connected to 32/0
+# pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
 # P/PT means pipe / port. This is the number you are supposed to use in
 # all ucli cmds e.g., ibuf -d 0 -p 1 -m 8 is used to check counters relative 
@@ -86,7 +86,7 @@ pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABL
 
 
 # alternative is following path bfrt.tf1.tm.port.cfg.get(dev_port=64)
-port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
+# port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
 
 ################ Add table entries ######################
 

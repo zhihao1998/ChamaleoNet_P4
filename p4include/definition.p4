@@ -27,10 +27,14 @@ const PortId_t CPU_PORT_2 = 66;
 const PortId_t NF_PORT_2 = 140;
 
 /*Table Sizing=*/
-const int DEFAULT_TABLE_SIZE = 10000;
+const int DEFAULT_TABLE_SIZE = 20000;
 
 const bit<48> NF_MAC_ADDR = 0x52540050F66F;
 
 /* Entry Idle Timeout */
 /* check readme for more information */
 const int ENTRY_IDLE_TIMEOUT_NBIT_POLL = 1; 
+
+/* Internal Net Range 130.192.0.0/16 */
+const bit<32> INTERNAL_NET = 0x82C00000;
+const bit<32> INTERNAL_NET_MASK = 0xFFFF0000;

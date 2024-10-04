@@ -1,3 +1,4 @@
 /build
 zlog-cfg-cur*
 bf_drivers.log*
+model_*.log*

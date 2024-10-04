@@ -30,3 +30,7 @@ const PortId_t NF_PORT_2 = 140;
 const int DEFAULT_TABLE_SIZE = 10000;
 
 const bit<48> NF_MAC_ADDR = 0x52540050F66F;
+
+/* Entry Idle Timeout */
+/* check readme for more information */
+const int ENTRY_IDLE_TIMEOUT_NBIT_POLL = 1; 

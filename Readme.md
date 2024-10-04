@@ -3,6 +3,6 @@
 ## commands
 
 ```bash
-bfrt_python /home/zhihaow/codes/honeypot_p4/bfrt/bfrt_setup.py true
+bfrt_python /home/zhihaow/codes/transparent_sdn_proxy_p4/bfrt/bfrt_setup.py true
 
 ```

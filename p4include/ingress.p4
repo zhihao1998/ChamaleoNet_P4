@@ -33,7 +33,7 @@ control Ingress(
         ig_dprsr_md.drop_ctl = 1;
     }
 
-    @idletime_precision(3)
+    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
     table icmp_flow {
         key = {
             hdr.ipv4.src_addr              : ternary;
@@ -47,11 +47,11 @@ control Ingress(
             drop;
         }
         default_action = send_to_nf();
-        size = DEFAULT_TABLE_SIZE;
+        size = 500;
         idle_timeout = true;
     }
     
-    @idletime_precision(3)
+    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
     table tcp_flow {
         key = {
             hdr.ipv4.src_addr              : ternary;
@@ -71,7 +71,7 @@ control Ingress(
         idle_timeout = true;
     }
     
-    @idletime_precision(3)
+    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
     table udp_flow {
         key = {
             hdr.ipv4.src_addr              : ternary;

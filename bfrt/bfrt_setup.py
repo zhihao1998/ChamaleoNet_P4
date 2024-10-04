@@ -94,35 +94,45 @@ icmp_flow = p4.Ingress.icmp_flow
 tcp_flow = p4.Ingress.tcp_flow
 udp_flow = p4.Ingress.udp_flow
 
-def aging_cb(dev_id, pipe_id, direction, parser_id, entry, _):
-    src_addr = entry.key[b'hdr.ipv4.src_addr']
-    dst_addr = entry.key[b'hdr.ipv4.dst_addr']
-    print(f"Aging out: src_addr={src_addr}, dst_addr={dst_addr}")
-    entry.remove()
+tcp_flow.idle_table_set_poll(enable=False)
+tcp_flow.idle_table_set_poll(enable=True)
+
+udp_flow.idle_table_set_poll(enable=False)
+udp_flow.idle_table_set_poll(enable=True)
+
+icmp_flow.idle_table_set_poll(enable=False)
+icmp_flow.idle_table_set_poll(enable=True)
 
 
-icmp_flow.idle_table_set_notify(enable=False)
-icmp_flow.idle_table_set_notify(enable=True, 
-                                callback=aging_cb,
-                                interval=5000,
-                                min_ttl=5000, 
-                                max_ttl=20000)
+# def aging_cb(dev_id, pipe_id, direction, parser_id, entry, _):
+#     src_addr = entry.key[b'hdr.ipv4.src_addr']
+#     dst_addr = entry.key[b'hdr.ipv4.dst_addr']
+#     print(f"Aging out: src_addr={src_addr}, dst_addr={dst_addr}")
+#     entry.remove()
 
-tcp_flow.idle_table_set_notify(enable=False)
-tcp_flow.idle_table_set_notify(enable=True, 
-                                callback=aging_cb,
-                                interval=5000,
-                                min_ttl=5000, 
-                                max_ttl=20000)
 
-udp_flow.idle_table_set_notify(enable=False)
-udp_flow.idle_table_set_notify(enable=True, 
-                                callback=aging_cb,
-                                interval=5000,
-                                min_ttl=5000, 
-                                max_ttl=20000)
+# icmp_flow.idle_table_set_notify(enable=False)
+# icmp_flow.idle_table_set_notify(enable=True, 
+#                                 callback=aging_cb,
+#                                 interval=5000,
+#                                 min_ttl=5000, 
+#                                 max_ttl=20000)
 
-print("Aging callback registered")
+# tcp_flow.idle_table_set_notify(enable=False)
+# tcp_flow.idle_table_set_notify(enable=True, 
+#                                 callback=aging_cb,
+#                                 interval=5000,
+#                                 min_ttl=5000, 
+#                                 max_ttl=20000)
+
+# udp_flow.idle_table_set_notify(enable=False)
+# udp_flow.idle_table_set_notify(enable=True, 
+#                                 callback=aging_cb,
+#                                 interval=5000,
+#                                 min_ttl=5000, 
+#                                 max_ttl=20000)
+
+# print("Aging callback registered")
 
 
 bfrt.complete_operations()

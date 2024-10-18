@@ -26,6 +26,8 @@ const PortId_t CPU_PORT_2 = 66;
 
 const PortId_t NF_PORT_2 = 140;
 
+const PortId_t DOWN_PORT = 511;
+
 /*Table Sizing=*/
 const int DEFAULT_TABLE_SIZE = 20000;
 
@@ -40,5 +42,7 @@ const bit<32> INTERNAL_NET = 0x82C00000;
 const bit<32> INTERNAL_NET_MASK = 0xFFFF0000;
 
 const bit<3> MIRROR_TYPE_I2E = 1;
+const bit<3> MIRROR_TYPE_E2E = 2;
+
 const bit<8> PKT_TYPE_MIRROR = 1;
 const bit<8> PKT_TYPE_NORMAL = 2;

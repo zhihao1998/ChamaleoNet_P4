@@ -5,7 +5,6 @@
 
 #include "p4include/definition.p4"
 #include "p4include/header.p4"
-#include "p4include/parser.p4"
 #include "p4include/ingress.p4"
 #include "p4include/egress.p4"
 

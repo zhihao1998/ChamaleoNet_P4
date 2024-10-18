@@ -65,28 +65,10 @@ def clear_all(verbose=True, batching=True):
 # clear_all(verbose=True)
 
 CPU_PORT_1 = 64
+MIRROR_PORT = 1
 
-################ Add ports ##########################
-
-# TODO from yaml
-# enable internal CPU ports
-# pm.port.add(DEV_PORT=64, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
-# pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
-
-# # front panel port 2/0 directly attached to server
-# pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
-
-# # front panel port 31/0 directly connected to 32/0
-# pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
-# pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
-
-# P/PT means pipe / port. This is the number you are supposed to use in
-# all ucli cmds e.g., ibuf -d 0 -p 1 -m 8 is used to check counters relative 
-# to front panel port 32/0
-
-
-# alternative is following path bfrt.tf1.tm.port.cfg.get(dev_port=64)
-# port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
+SESSION_ID = 12
+TRUNCATE_SIZE = 128
 
 ################ Add table entries ######################
 
@@ -95,44 +77,19 @@ active_host_tbl = p4.Ingress.active_host_tbl
 active_host_tbl.idle_table_set_poll(enable=False)
 active_host_tbl.idle_table_set_poll(enable=True)
 
-# active_host_tbl.add_with_drop(internal_ip='130.192.6.1',internal_port=1,ip_protocol=6)
+mirror_fwd_tbl = p4.Ingress.mirror_fwd
+mirror_fwd_tbl.clear()
+mirror_fwd_tbl.add_with_set_mirror(ingress_port=CPU_PORT_1, 
+                                   dest_port=MIRROR_PORT, ing_mir_ses=SESSION_ID)
 
-# udp_flow.idle_table_set_poll(enable=False)
-# udp_flow.idle_table_set_poll(enable=True)
-
-# icmp_flow.idle_table_set_poll(enable=False)
-# icmp_flow.idle_table_set_poll(enable=True)
-
-
-# def aging_cb(dev_id, pipe_id, direction, parser_id, entry, _):
-#     src_addr = entry.key[b'hdr.ipv4.src_addr']
-#     dst_addr = entry.key[b'hdr.ipv4.dst_addr']
-#     print(f"Aging out: src_addr={src_addr}, dst_addr={dst_addr}")
-#     entry.remove()
-
-
-# icmp_flow.idle_table_set_notify(enable=False)
-# icmp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# tcp_flow.idle_table_set_notify(enable=False)
-# tcp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# udp_flow.idle_table_set_notify(enable=False)
-# udp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# print("Aging callback registered")
+mirror_cfg_tbl = bfrt.mirror.cfg
+mirror_cfg_tbl.clear()
+mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
+                               session_enable=True,
+                               direction="INGRESS",
+                               ucast_egress_port=MIRROR_PORT,
+                               ucast_egress_port_valid=True,
+                               max_pkt_len=TRUNCATE_SIZE)
 
 
 bfrt.complete_operations()

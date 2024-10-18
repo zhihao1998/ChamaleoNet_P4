@@ -95,44 +95,31 @@ active_host_tbl = p4.Ingress.active_host_tbl
 active_host_tbl.idle_table_set_poll(enable=False)
 active_host_tbl.idle_table_set_poll(enable=True)
 
-# active_host_tbl.add_with_drop(internal_ip='130.192.6.1',internal_port=1,ip_protocol=6)
+################ Mirroring Setting ######################
 
-# udp_flow.idle_table_set_poll(enable=False)
-# udp_flow.idle_table_set_poll(enable=True)
+MIRROR_PORT = 1
 
-# icmp_flow.idle_table_set_poll(enable=False)
-# icmp_flow.idle_table_set_poll(enable=True)
+SESSION_ID = 12
+TRUNCATE_SIZE = 128
 
+active_host_tbl = p4.Ingress.active_host_tbl
 
-# def aging_cb(dev_id, pipe_id, direction, parser_id, entry, _):
-#     src_addr = entry.key[b'hdr.ipv4.src_addr']
-#     dst_addr = entry.key[b'hdr.ipv4.dst_addr']
-#     print(f"Aging out: src_addr={src_addr}, dst_addr={dst_addr}")
-#     entry.remove()
+active_host_tbl.idle_table_set_poll(enable=False)
+active_host_tbl.idle_table_set_poll(enable=True)
 
+mirror_fwd_tbl = p4.Ingress.mirror_fwd
+mirror_fwd_tbl.clear()
+mirror_fwd_tbl.add_with_set_mirror(ingress_port=CPU_PORT_1, 
+                                   dest_port=MIRROR_PORT, ing_mir_ses=SESSION_ID)
 
-# icmp_flow.idle_table_set_notify(enable=False)
-# icmp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# tcp_flow.idle_table_set_notify(enable=False)
-# tcp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# udp_flow.idle_table_set_notify(enable=False)
-# udp_flow.idle_table_set_notify(enable=True, 
-#                                 callback=aging_cb,
-#                                 interval=5000,
-#                                 min_ttl=5000, 
-#                                 max_ttl=20000)
-
-# print("Aging callback registered")
+mirror_cfg_tbl = bfrt.mirror.cfg
+mirror_cfg_tbl.clear()
+mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
+                               session_enable=True,
+                               direction="INGRESS",
+                               ucast_egress_port=MIRROR_PORT,
+                               ucast_egress_port_valid=True,
+                               max_pkt_len=TRUNCATE_SIZE)
 
 
 bfrt.complete_operations()

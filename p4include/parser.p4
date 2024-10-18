@@ -23,6 +23,17 @@ struct my_ingress_metadata_t {
 
     bit<32>  internal_ip;
     bit<16>  internal_port;
+
+    MirrorId_t ing_mir_ses;
+    bit<8> pkt_type;
+}
+
+header mirror_bridged_metadata_h {
+    bit<8> pkt_type;
+}
+
+header mirror_h {
+    bit<8> pkt_type;
 }
 
     /***********************  P A R S E R  **************************/
@@ -54,6 +65,8 @@ parser IngressParser(packet_in        pkt,
         meta.ip_protocol = hdr.ipv4.protocol;
         meta.internal_ip = 0;
         meta.internal_port = 0;
+        meta.ing_mir_ses = 0;
+        meta.pkt_type = 0;
 
         transition select(hdr.ipv4.protocol) {
             IP_PROTO_ICMP: parse_icmp;
@@ -71,6 +84,8 @@ parser IngressParser(packet_in        pkt,
         meta.dst_port = 0;
         meta.internal_ip = 0;
         meta.internal_port = 0;
+        meta.ing_mir_ses = 0;
+        meta.pkt_type = 0;
         transition reject;
     }
     state parse_icmp {
@@ -109,7 +124,13 @@ control IngressDeparser(packet_out pkt,
     /* Intrinsic */
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
+    Mirror() mirror;
+
     apply {
+        if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
+            mirror.emit<mirror_h>(meta.ing_mir_ses, {meta.pkt_type});
+        }
+
         pkt.emit(hdr);
     }
 }
@@ -141,6 +162,27 @@ parser EgressParser(packet_in        pkt,
     /* This is a mandatory state, required by Tofino Architecture */
     state start {
         pkt.extract(eg_intr_md);
+        transition parse_metadata;
+    }
+
+    state parse_metadata {
+        mirror_h mirror_md = pkt.lookahead<mirror_h>();
+        transition select(mirror_md.pkt_type) {
+            PKT_TYPE_MIRROR : parse_mirror_md;
+            PKT_TYPE_NORMAL : parse_bridged_md;
+            default: accept;
+        }
+    }
+
+    state parse_mirror_md {
+        mirror_h mirror_md;
+        pkt.extract(mirror_md);
+        transition accept;
+    }
+
+    state parse_bridged_md {
+        mirror_bridged_metadata_h bridged_md;
+        pkt.extract(bridged_md);
         transition accept;
     }
 }

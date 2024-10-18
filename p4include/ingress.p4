@@ -80,7 +80,30 @@ control Ingress(
         }
     }
 
+    action set_mirror(PortId_t dest_port, MirrorId_t ing_mir_ses) {
+        ig_tm_md.ucast_egress_port = dest_port;
+        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
+        meta.ing_mir_ses = ing_mir_ses;
+        meta.pkt_type = PKT_TYPE_MIRROR;
+    }
+
+    table mirror_fwd {
+        key = {
+            ig_intr_md.ingress_port : exact;
+        }
+
+        actions = {
+            set_mirror;
+        }
+
+        size = 128;
+    }
+
     apply {
+        if (ig_intr_md.resubmit_flag == 0) {
+            mirror_fwd.apply();
+        }
+
         if (hdr.ipv4.isValid())
         {
             if (internal_ip_check.apply().hit) {

@@ -21,6 +21,11 @@ parser IngressParser(packet_in        pkt,
         pkt.extract(hdr.ethernet);
         meta.ing_mir_ses = 0;
         meta.pkt_type = 0;
+        
+        meta.internal_ip = 0;
+        meta.internal_port = 0;
+        meta.external_ip = 0;
+        meta.external_port = 0;
 
         transition select(hdr.ethernet.ether_type) {
             ETHERTYPE_IPV4:     parse_ipv4;
@@ -32,8 +37,6 @@ parser IngressParser(packet_in        pkt,
         meta.src_ip = hdr.ipv4.src_addr;
         meta.dst_ip = hdr.ipv4.dst_addr;
         meta.ip_protocol = hdr.ipv4.protocol;
-        meta.internal_ip = 0;
-        meta.internal_port = 0;
 
         transition select(hdr.ipv4.protocol) {
             IP_PROTO_ICMP: parse_icmp;
@@ -131,11 +134,15 @@ control Ingress(
     action set_src_internal() {
         meta.internal_ip = meta.src_ip;
         meta.internal_port = meta.src_port;
+        meta.external_ip = meta.dst_ip;
+        meta.external_port = meta.dst_port;
     }
 
     action set_dst_internal() {
         meta.internal_ip = meta.dst_ip;
-        meta.internal_port = meta.dst_port;
+        meta.internal_port = meta.dst_port;        
+        meta.external_ip = meta.src_ip;
+        meta.external_port = meta.src_port;
     }
 
     table internal_ip_check {
@@ -180,12 +187,29 @@ control Ingress(
         hdr.mirror_bridged_md.pkt_type = PKT_TYPE_NORMAL;
     }
 
+    table whitelist_tbl {
+        key = {
+            meta.external_ip : exact;
+            meta.external_port : exact;
+            meta.ip_protocol: exact;
+        }
+        actions = {
+            drop;
+            NoAction;
+        }
+        size = 512;
+        const default_action = NoAction();
+    }
+
     apply {
         set_normal_pkt();
         if (hdr.ipv4.isValid())
         {
             if (internal_ip_check.apply().hit) {
-                active_host_tbl.apply();
+                if (!whitelist_tbl.apply().hit)
+                {
+                    active_host_tbl.apply();
+                }
             }
             else {
                 drop();

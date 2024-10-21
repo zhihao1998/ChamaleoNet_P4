@@ -27,7 +27,7 @@ const PortId_t CPU_PORT_2 = 66;
 const PortId_t PROXY_PORT = 140;
 
 /*Table Sizing=*/
-const int DEFAULT_TABLE_SIZE = 20000;
+const int DEFAULT_TABLE_SIZE = 100000;
 
 const bit<48> NF_MAC_ADDR = 0x52540050F66F;
 

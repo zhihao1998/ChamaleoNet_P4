@@ -1,4 +1,12 @@
 from ipaddress import ip_address
+import os
+
+# Loading whitelist from configuration
+white_list = []
+with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remote_whitelist.csv')) as f:
+    for line in f.readlines():
+        white_list.append(line.replace("\n", "").split(","))
+
 
 p4 = bfrt.tf_honeypot.pipe
 pm = bfrt.port
@@ -91,14 +99,21 @@ port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
 ################ Add table entries ######################
 
 active_host_tbl = p4.Ingress.active_host_tbl
-
+active_host_tbl.clear()
 active_host_tbl.idle_table_set_poll(enable=False)
 active_host_tbl.idle_table_set_poll(enable=True)
 
+whitelist_tbl = p4.Ingress.whitelist_tbl
+whitelist_tbl.clear()
+for (ip, port, proto) in white_list:
+    whitelist_tbl.add_with_drop(external_ip=ip,
+                                external_port=port,
+                                ip_protocol=proto)
+
 ################ Mirroring Setting ######################
 
-CPU_PORT_1 = 64
-MIRROR_PORT = 1
+MIRROR_IN_PORT = 140
+MIRROR_OUT_PORT = 140
 
 SESSION_ID = 12
 TRUNCATE_SIZE = 128
@@ -110,15 +125,15 @@ active_host_tbl.idle_table_set_poll(enable=True)
 
 mirror_fwd_tbl = p4.Ingress.mirror_fwd
 mirror_fwd_tbl.clear()
-mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=CPU_PORT_1, 
-                                   ing_mir_ses=SESSION_ID)
+mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=MIRROR_IN_PORT, 
+                                       ing_mir_ses=SESSION_ID)
 
 mirror_cfg_tbl = bfrt.mirror.cfg
 mirror_cfg_tbl.clear()
 mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
                                session_enable=True,
                                direction="INGRESS",
-                               ucast_egress_port=MIRROR_PORT,
+                               ucast_egress_port=MIRROR_OUT_PORT,
                                ucast_egress_port_valid=True,
                                max_pkt_len=TRUNCATE_SIZE)
 

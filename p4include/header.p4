@@ -93,6 +93,8 @@ struct my_ingress_metadata_t {
 
     bit<32>  internal_ip;
     bit<16>  internal_port;
+    bit<32>  external_ip;
+    bit<16>  external_port;
 
     MirrorId_t ing_mir_ses;
     bit<8> pkt_type;

@@ -1,5 +1,5 @@
 /build
 zlog-cfg-cur*
-bf_drivers.log*
+bf_drivers.*
 model_*.log*
 *.pcap

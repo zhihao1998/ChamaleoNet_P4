@@ -14,25 +14,7 @@ parser EgressParser(packet_in        pkt,
     /* This is a mandatory state, required by Tofino Architecture */
     state start {
         pkt.extract(eg_intr_md);
-        transition parse_metadata;
-    }
-
-    state parse_metadata {
-        my_eg_meta.egr_mir_ses = 0;
-        my_eg_meta.pkt_type = 0;
-        
-        mirror_h mirror_md = pkt.lookahead<mirror_h>();
-        transition select(mirror_md.pkt_type) {
-            PKT_TYPE_MIRROR : parse_mirror_md;
-            PKT_TYPE_NORMAL : parse_bridged_md;
-            default: accept;
-        }
-    }
-
-    state parse_mirror_md {
-        mirror_h mirror_md;
-        pkt.extract(mirror_md);
-        transition parse_ethernet;
+        transition parse_bridged_md;
     }
 
     state parse_bridged_md {
@@ -58,15 +40,12 @@ control Egress(
     inout egress_intrinsic_metadata_for_deparser_t     eg_dprsr_md,
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md)
 {
-    action set_egr_mirror () {
-        my_eg_meta.egr_mir_ses = hdr.mirror_bridged_md.egr_mir_ses;
-        my_eg_meta.pkt_type = PKT_TYPE_MIRROR;
-        eg_dprsr_md.mirror_type = MIRROR_TYPE_E2E;
-
-    }
     apply {
-        if (hdr.mirror_bridged_md.do_egr_mir == 1) {
-            set_egr_mirror();
+        if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_MIRROR) {
+            hdr.ethernet.dst_addr = NF_MAC_ADDR;
+        }
+        else if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_NORMAL) {
+            eg_dprsr_md.drop_ctl = 1;
         }
     }
 }
@@ -80,13 +59,7 @@ control EgressDeparser(packet_out pkt,
     /* Intrinsic */
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md)
 {
-    Mirror() mirror;
-
     apply {
-        if (eg_dprsr_md.mirror_type == MIRROR_TYPE_E2E) {
-            mirror.emit<mirror_h>(my_eg_meta.egr_mir_ses, {my_eg_meta.pkt_type});
-        }
-
         pkt.emit(hdr.ethernet);
     }
 }

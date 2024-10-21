@@ -97,7 +97,8 @@ active_host_tbl.idle_table_set_poll(enable=True)
 
 ################ Mirroring Setting ######################
 
-MIRROR_PORT = 140
+CPU_PORT_1 = 64
+MIRROR_PORT = 1
 
 SESSION_ID = 12
 TRUNCATE_SIZE = 128
@@ -109,18 +110,14 @@ active_host_tbl.idle_table_set_poll(enable=True)
 
 mirror_fwd_tbl = p4.Ingress.mirror_fwd
 mirror_fwd_tbl.clear()
-mirror_fwd_tbl.add_with_set_mirror(ingress_port=CPU_PORT_1, 
-                                   dest_port=MIRROR_PORT, 
-                                   do_ing_mir = 0,
-                                   ing_mir_ses=0,
-                                   do_egr_mir = 1,
-                                   egr_mir_ses=SESSION_ID)
+mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=CPU_PORT_1, 
+                                   ing_mir_ses=SESSION_ID)
 
 mirror_cfg_tbl = bfrt.mirror.cfg
 mirror_cfg_tbl.clear()
 mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
                                session_enable=True,
-                               direction="EGRESS",
+                               direction="INGRESS",
                                ucast_egress_port=MIRROR_PORT,
                                ucast_egress_port_valid=True,
                                max_pkt_len=TRUNCATE_SIZE)

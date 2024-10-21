@@ -19,7 +19,6 @@ parser IngressParser(packet_in        pkt,
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        meta.do_ing_mir = 0;
         meta.ing_mir_ses = 0;
         meta.pkt_type = 0;
 
@@ -95,12 +94,11 @@ control Ingress(
 
     action send_to_cpu() {
         ig_tm_md.ucast_egress_port = CPU_PORT_1;
-        // ig_tm_md.copy_to_cpu       = 1;
     }
 
     action send_to_nf() {
         hdr.ethernet.dst_addr = NF_MAC_ADDR;
-        ig_tm_md.ucast_egress_port = NF_PORT_2;
+        ig_tm_md.ucast_egress_port = PROXY_PORT;
     }
 
     action set_egress_port(PortId_t port) {
@@ -158,19 +156,11 @@ control Ingress(
         }
     }
 
-    action set_ing_mirror_type() {
-        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
-        meta.pkt_type = PKT_TYPE_MIRROR;
-    }
-
-    action set_mirror(PortId_t dest_port, bit<1> do_ing_mir, MirrorId_t ing_mir_ses, bit<1> do_egr_mir, MirrorId_t egr_mir_ses) {
-        ig_tm_md.ucast_egress_port = dest_port;
-
-        meta.do_ing_mir = do_ing_mir;
+    action set_ing_mirror(MirrorId_t ing_mir_ses) {
         meta.ing_mir_ses = ing_mir_ses;
 
-        hdr.mirror_bridged_md.do_egr_mir = do_egr_mir;
-        hdr.mirror_bridged_md.egr_mir_ses = egr_mir_ses;
+        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
+        meta.pkt_type = PKT_TYPE_MIRROR;
     }
 
     table mirror_fwd {
@@ -179,7 +169,7 @@ control Ingress(
         }
 
         actions = {
-            set_mirror;
+            set_ing_mirror;
         }
 
         size = 512;
@@ -191,14 +181,6 @@ control Ingress(
     }
 
     apply {
-        if (ig_intr_md.resubmit_flag == 0) {
-            mirror_fwd.apply();
-        }
-        if (meta.do_ing_mir == 1)
-        {
-            set_ing_mirror_type();
-        }
-
         set_normal_pkt();
         if (hdr.ipv4.isValid())
         {
@@ -207,6 +189,11 @@ control Ingress(
             }
             else {
                 drop();
+            }
+            // if it's going to be sent to the proxy
+            if (ig_dprsr_md.drop_ctl == 0) {
+                mirror_fwd.apply();
+                ig_dprsr_md.drop_ctl = 1;
             }
         }
 
@@ -229,7 +216,6 @@ control IngressDeparser(packet_out pkt,
         if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
             mirror.emit<mirror_h>(meta.ing_mir_ses, {meta.pkt_type});
         }
-
         pkt.emit(hdr);
     }
 }

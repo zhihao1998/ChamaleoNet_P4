@@ -69,9 +69,6 @@ header udp_h {
 
 header mirror_bridged_metadata_h {
     bit<8> pkt_type;
-    bit<1> do_egr_mir;
-    MirrorId_t egr_mir_ses; // bit<10>
-    bit<5> padding;
 }
 
 header mirror_h {
@@ -97,7 +94,6 @@ struct my_ingress_metadata_t {
     bit<32>  internal_ip;
     bit<16>  internal_port;
 
-    bit<1> do_ing_mir;
     MirrorId_t ing_mir_ses;
     bit<8> pkt_type;
 }
@@ -105,8 +101,6 @@ struct my_ingress_metadata_t {
 typedef my_ingress_headers_t my_egress_headers_t;
 
 struct my_egress_metadata_t {
-    MirrorId_t egr_mir_ses;
-    bit<8> pkt_type;
 }
 
 

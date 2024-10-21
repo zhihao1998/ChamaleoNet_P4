@@ -24,9 +24,7 @@ const bit<8> UDP_HEADER_LEN = 8;
 const PortId_t CPU_PORT_1 = 64; 
 const PortId_t CPU_PORT_2 = 66; 
 
-const PortId_t NF_PORT_2 = 140;
-
-const PortId_t DOWN_PORT = 511;
+const PortId_t PROXY_PORT = 140;
 
 /*Table Sizing=*/
 const int DEFAULT_TABLE_SIZE = 20000;

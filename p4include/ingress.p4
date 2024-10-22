@@ -112,7 +112,7 @@ control Ingress(
         ig_dprsr_md.drop_ctl = 1;
     }
 
-    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_POLL)
+    @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_NOTIFICATION)
     table active_host_tbl {
         key = {
             meta.internal_ip   : exact;
@@ -127,7 +127,7 @@ control Ingress(
             drop;
         }
         default_action = send_to_nf();
-        size = DEFAULT_TABLE_SIZE;
+        size = ACTIVE_HOST_TABLE_SIZE;
         idle_timeout = true;
     }
     

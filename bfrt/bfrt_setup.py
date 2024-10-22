@@ -100,8 +100,6 @@ port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
 
 active_host_tbl = p4.Ingress.active_host_tbl
 active_host_tbl.clear()
-active_host_tbl.idle_table_set_poll(enable=False)
-active_host_tbl.idle_table_set_poll(enable=True)
 
 whitelist_tbl = p4.Ingress.whitelist_tbl
 whitelist_tbl.clear()
@@ -117,11 +115,6 @@ MIRROR_OUT_PORT = 140
 
 SESSION_ID = 12
 TRUNCATE_SIZE = 128
-
-active_host_tbl = p4.Ingress.active_host_tbl
-
-active_host_tbl.idle_table_set_poll(enable=False)
-active_host_tbl.idle_table_set_poll(enable=True)
 
 mirror_fwd_tbl = p4.Ingress.mirror_fwd
 mirror_fwd_tbl.clear()

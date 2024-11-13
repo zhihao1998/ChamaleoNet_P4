@@ -24,12 +24,8 @@ const bit<8> UDP_HEADER_LEN = 8;
 const PortId_t CPU_PORT_1 = 64; 
 const PortId_t CPU_PORT_2 = 66; 
 
-const PortId_t PROXY_PORT = 140;
-
-/*Table Sizing=*/
+/*Table Sizing*/
 const int ACTIVE_HOST_TABLE_SIZE = 500000;
-
-const bit<48> NF_MAC_ADDR = 0x52540050F66F;
 
 /* Entry Idle Timeout */
 /* check readme for more information */

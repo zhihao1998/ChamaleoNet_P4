@@ -21,6 +21,7 @@ parser IngressParser(packet_in        pkt,
         pkt.extract(hdr.ethernet);
         meta.ing_mir_ses = 0;
         meta.pkt_type = 0;
+        meta.dst_mac = 0;
         
         meta.internal_ip = 0;
         meta.internal_port = 0;
@@ -99,11 +100,6 @@ control Ingress(
         ig_tm_md.ucast_egress_port = CPU_PORT_1;
     }
 
-    action send_to_nf() {
-        hdr.ethernet.dst_addr = NF_MAC_ADDR;
-        ig_tm_md.ucast_egress_port = PROXY_PORT;
-    }
-
     action set_egress_port(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
     }
@@ -123,10 +119,10 @@ control Ingress(
         actions = {
             set_egress_port; 
             send_to_cpu;
-            send_to_nf;
             drop;
+            NoAction;
         }
-        default_action = send_to_nf();
+        default_action = NoAction();
         size = ACTIVE_HOST_TABLE_SIZE;
         idle_timeout = true;
     }
@@ -163,11 +159,11 @@ control Ingress(
         }
     }
 
-    action set_ing_mirror(MirrorId_t ing_mir_ses) {
+    action set_ing_mirror(MirrorId_t ing_mir_ses, bit<48> dst_mac) {
         meta.ing_mir_ses = ing_mir_ses;
-
         ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
         meta.pkt_type = PKT_TYPE_MIRROR;
+        meta.dst_mac = dst_mac;
     }
 
     table mirror_fwd {
@@ -185,6 +181,8 @@ control Ingress(
     action set_normal_pkt() {
         hdr.mirror_bridged_md.setValid();
         hdr.mirror_bridged_md.pkt_type = PKT_TYPE_NORMAL;
+        hdr.mirror_bridged_md.dst_mac = hdr.ethernet.dst_addr;
+        ig_tm_md.ucast_egress_port = CPU_PORT_1;
     }
 
     table whitelist_tbl {
@@ -238,7 +236,7 @@ control IngressDeparser(packet_out pkt,
 
     apply {
         if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
-            mirror.emit<mirror_h>(meta.ing_mir_ses, {meta.pkt_type});
+            mirror.emit<mirror_h>(meta.ing_mir_ses, {meta.pkt_type, meta.dst_mac});
         }
         pkt.emit(hdr);
     }

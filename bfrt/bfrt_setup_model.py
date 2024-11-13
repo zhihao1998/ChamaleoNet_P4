@@ -72,8 +72,8 @@ TRUNCATE_SIZE = 128
 
 active_host_tbl = p4.Ingress.active_host_tbl
 
-active_host_tbl.idle_table_set_poll(enable=False)
-active_host_tbl.idle_table_set_poll(enable=True)
+# active_host_tbl.idle_table_set_poll(enable=False)
+# active_host_tbl.idle_table_set_poll(enable=True)
 
 mirror_fwd_tbl = p4.Ingress.mirror_fwd
 mirror_fwd_tbl.clear()

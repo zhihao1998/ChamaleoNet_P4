@@ -42,7 +42,7 @@ control Egress(
 {
     apply {
         if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_MIRROR) {
-            hdr.ethernet.dst_addr = NF_MAC_ADDR;
+            hdr.ethernet.dst_addr = hdr.mirror_bridged_md.dst_mac;
         }
         else if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_NORMAL) {
             eg_dprsr_md.drop_ctl = 1;

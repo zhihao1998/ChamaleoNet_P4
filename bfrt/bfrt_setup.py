@@ -84,6 +84,9 @@ pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABL
 # front panel port 2/0 directly attached to server
 pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
+# front panel port 28/0 directly attached to anonymizer 
+pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+
 # front panel port 31/0 directly connected to 32/0
 pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
@@ -110,8 +113,12 @@ for (ip, port, proto) in white_list:
 
 ################ Mirroring Setting ######################
 
+INCOMING_PORT = 160
+
 MIRROR_IN_PORT = 140
 MIRROR_OUT_PORT = 140
+
+PROXY_DST_MAC = "52:54:00:5b:57:5c"
 
 SESSION_ID = 12
 TRUNCATE_SIZE = 128
@@ -119,11 +126,21 @@ TRUNCATE_SIZE = 128
 mirror_fwd_tbl = p4.Ingress.mirror_fwd
 mirror_fwd_tbl.clear()
 mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=MIRROR_IN_PORT, 
-                                       ing_mir_ses=SESSION_ID)
+                                       ing_mir_ses=SESSION_ID,
+                                       dst_mac = PROXY_DST_MAC)
+mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=INCOMING_PORT, 
+                                       ing_mir_ses=13,
+                                       dst_mac = PROXY_DST_MAC)
 
 mirror_cfg_tbl = bfrt.mirror.cfg
 mirror_cfg_tbl.clear()
 mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
+                               session_enable=True,
+                               direction="INGRESS",
+                               ucast_egress_port=MIRROR_OUT_PORT,
+                               ucast_egress_port_valid=True,
+                               max_pkt_len=TRUNCATE_SIZE)
+mirror_cfg_tbl.add_with_normal(sid=13,
                                session_enable=True,
                                direction="INGRESS",
                                ucast_egress_port=MIRROR_OUT_PORT,
@@ -141,4 +158,5 @@ print("""
 print ("Table active_host_tbl:")
 active_host_tbl.info()
 
-                       
+print ("Table whitelist_tbl:")
+whitelist_tbl.info()         

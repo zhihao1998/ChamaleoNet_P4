@@ -149,14 +149,15 @@ control Ingress(
         actions = {
             set_src_internal();
             set_dst_internal();
+            send_to_cpu();
             NoAction;
         }
         size = 10;
         const default_action = NoAction();
-        const entries = {
-            (INTERNAL_NET &&& INTERNAL_NET_MASK, _) : set_src_internal();
-            (_, INTERNAL_NET &&& INTERNAL_NET_MASK) : set_dst_internal();
-        }
+        // const entries = {
+        //     (INTERNAL_NET &&& INTERNAL_NET_MASK, _) : set_src_internal();
+        //     (_, INTERNAL_NET &&& INTERNAL_NET_MASK) : set_dst_internal();
+        // }
     }
 
     action set_ing_mirror(MirrorId_t ing_mir_ses, bit<48> dst_mac) {
@@ -164,11 +165,13 @@ control Ingress(
         ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
         meta.pkt_type = PKT_TYPE_MIRROR;
         meta.dst_mac = dst_mac;
+        ig_dprsr_md.drop_ctl = 1;
     }
 
     table mirror_fwd {
         key = {
             ig_intr_md.ingress_port : exact;
+            meta.internal_ip        : ternary;
         }
 
         actions = {
@@ -195,7 +198,7 @@ control Ingress(
             drop;
             NoAction;
         }
-        size = 512;
+        size = 1024;
         const default_action = NoAction();
     }
 
@@ -215,7 +218,7 @@ control Ingress(
             // if it's going to be sent to the proxy
             if (ig_dprsr_md.drop_ctl == 0) {
                 mirror_fwd.apply();
-                ig_dprsr_md.drop_ctl = 1;
+
             }
         }
 

@@ -32,10 +32,6 @@ const int ACTIVE_HOST_TABLE_SIZE = 500000;
 const int ENTRY_IDLE_TIMEOUT_NBIT_POLL = 1; 
 const int ENTRY_IDLE_TIMEOUT_NBIT_NOTIFICATION = 0; 
 
-/* Internal Net Range 130.192.0.0/16 */
-const bit<32> INTERNAL_NET = 0x82C00000;
-const bit<32> INTERNAL_NET_MASK = 0xFFFF0000;
-
 const bit<3> MIRROR_TYPE_I2E = 1;
 const bit<3> MIRROR_TYPE_E2E = 2;
 

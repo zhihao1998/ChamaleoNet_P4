@@ -14,16 +14,6 @@ parser EgressParser(packet_in        pkt,
     /* This is a mandatory state, required by Tofino Architecture */
     state start {
         pkt.extract(eg_intr_md);
-        transition parse_bridged_md;
-    }
-
-    state parse_bridged_md {
-        pkt.extract(hdr.mirror_bridged_md);
-        transition parse_ethernet;
-    }
-
-    state parse_ethernet {
-        pkt.extract(hdr.ethernet);
         transition accept;
     }
 }
@@ -41,12 +31,6 @@ control Egress(
     inout egress_intrinsic_metadata_for_output_port_t  eg_oport_md)
 {
     apply {
-        if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_MIRROR) {
-            hdr.ethernet.dst_addr = hdr.mirror_bridged_md.dst_mac;
-        }
-        else if (hdr.mirror_bridged_md.pkt_type == PKT_TYPE_NORMAL) {
-            eg_dprsr_md.drop_ctl = 1;
-        }
     }
 }
 
@@ -60,6 +44,6 @@ control EgressDeparser(packet_out pkt,
     in    egress_intrinsic_metadata_for_deparser_t  eg_dprsr_md)
 {
     apply {
-        pkt.emit(hdr.ethernet);
+        pkt.emit(hdr);
     }
 }

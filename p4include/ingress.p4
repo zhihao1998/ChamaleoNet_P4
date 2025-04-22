@@ -19,10 +19,6 @@ parser IngressParser(packet_in        pkt,
 
     state parse_ethernet {
         pkt.extract(hdr.ethernet);
-        meta.ing_mir_ses = 0;
-        meta.pkt_type = 0;
-        meta.dst_mac = 0;
-        
         meta.internal_ip = 0;
         meta.internal_port = 0;
         meta.external_ip = 0;
@@ -160,33 +156,6 @@ control Ingress(
         // }
     }
 
-    action set_ing_mirror(MirrorId_t ing_mir_ses, bit<48> dst_mac) {
-        meta.ing_mir_ses = ing_mir_ses;
-        ig_dprsr_md.mirror_type = MIRROR_TYPE_I2E;
-        meta.pkt_type = PKT_TYPE_MIRROR;
-        meta.dst_mac = dst_mac;
-        ig_dprsr_md.drop_ctl = 1;
-    }
-
-    table mirror_fwd {
-        key = {
-            ig_intr_md.ingress_port : exact;
-            meta.internal_ip        : ternary;
-        }
-
-        actions = {
-            set_ing_mirror;
-        }
-
-        size = 512;
-    }
-
-    action set_normal_pkt() {
-        hdr.mirror_bridged_md.setValid();
-        hdr.mirror_bridged_md.pkt_type = PKT_TYPE_NORMAL;
-        hdr.mirror_bridged_md.dst_mac = hdr.ethernet.dst_addr;
-        ig_tm_md.ucast_egress_port = CPU_PORT_1;
-    }
 
     table whitelist_tbl {
         key = {
@@ -198,27 +167,50 @@ control Ingress(
             drop;
             NoAction;
         }
-        size = 1024;
+        size = 4096;
+        const default_action = NoAction();
+    }
+
+    action send_to_controller(bit<48> dst_mac, PortId_t out_port)
+    {
+        hdr.ethernet.dst_addr = dst_mac;
+        ig_tm_md.ucast_egress_port = out_port;
+    }
+
+    table fwd_controller_tbl {
+        key = {
+            // Just a placeholder, do not need the key
+            hdr.ethernet.ether_type: exact;
+        }
+
+        actions = {
+            send_to_controller;
+            NoAction;
+        }
+
+        size = 128;
         const default_action = NoAction();
     }
 
     apply {
-        set_normal_pkt();
         if (hdr.ipv4.isValid())
         {
-            if (internal_ip_check.apply().hit) {
+            if (internal_ip_check.apply().hit) 
+            {
                 if (!whitelist_tbl.apply().hit)
                 {
-                    active_host_tbl.apply();
+                    if(!active_host_tbl.apply().hit)
+                    {
+                        // Set dst_mac and outport
+                        fwd_controller_tbl.apply();
+                    }
                 }
             }
-            else {
+            else 
+            {
+                // drop all external-external packets
+                // TODO: Fix for anonymized packets
                 drop();
-            }
-            // if it's going to be sent to the proxy
-            if (ig_dprsr_md.drop_ctl == 0) {
-                mirror_fwd.apply();
-
             }
         }
 
@@ -235,12 +227,7 @@ control IngressDeparser(packet_out pkt,
     /* Intrinsic */
     in    ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md)
 {
-    Mirror() mirror;
-
     apply {
-        if (ig_dprsr_md.mirror_type == MIRROR_TYPE_I2E) {
-            mirror.emit<mirror_h>(meta.ing_mir_ses, {meta.pkt_type, meta.dst_mac});
-        }
         pkt.emit(hdr);
     }
 }

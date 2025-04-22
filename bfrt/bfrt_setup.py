@@ -93,7 +93,7 @@ pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABL
 port.mod(CPU_PORT_1, COPY_TO_CPU_PORT_ENABLE=True)
 
 # Loading whitelist from configuration
-white_num = 200
+white_num = 3000
 white_list = []
 with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remote_whitelist.csv')) as f:
     for line in f.readlines():
@@ -101,13 +101,11 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remote_white
 white_list = white_list[:white_num]
 
 # Internal Nets
-internal_nets = [('130.192.0.0', '255.255.0.0'),
-                 ('10.57.0.0', '255.255.0.0')]
+internal_nets = [('154.200.0.0', '255.255.0.0')]
+# internal_nets = [('130.192.0.0', '255.255.0.0')]
 
 # Darknet Nets
-darknet_nets = [('90.147.183.0', '255.255.255.0'),
-                ('90.147.204.0', '255.255.255.0'),
-                ('130.192.166.0', '255.255.255.0'),
+darknet_nets = [('130.192.166.0', '255.255.255.0'),
                 ('130.192.167.0', '255.255.255.0')]
 
 # Live Nets
@@ -129,58 +127,28 @@ for (ip, port, proto, _) in white_list:
 internal_ip_check_tbl = p4.Ingress.internal_ip_check
 internal_ip_check_tbl.clear()
 
-internal_ip_check_tbl.add_with_set_src_internal()
+for net in internal_nets:
+    internal_ip_check_tbl.add_with_set_src_internal(src_addr=net[0], src_addr_mask=net[1], MATCH_PRIORITY=10)
+    internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
 
-# for net in internal_nets:
-#     internal_ip_check_tbl.add_with_set_src_internal(src_addr=net[0], src_addr_mask=net[1], MATCH_PRIORITY=10)
-#     internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
 
-# for net in darknet_nets[:2]:
-#     internal_ip_check_tbl.add_with_set_src_internal(src_addr=net[0], src_addr_mask=net[1], MATCH_PRIORITY=10)
-#     internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
+for net in darknet_nets:
+    internal_ip_check_tbl.add_with_set_src_internal(src_addr=net[0], src_addr_mask=net[1], MATCH_PRIORITY=10)
+    internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
 
-# # add default to send to CPU
-# internal_ip_check_tbl.add_with_send_to_cpu(src_addr="0.0.0.0", src_addr_mask="0.0.0.0", MATCH_PRIORITY=0)
 
 ################ Add Mirroring (Only Live Nets) ######################
 
 INCOMING_PORT = 160
-MIRROR_IN_PORT = 140
-MIRROR_OUT_PORT = 140
 
-PROXY_DST_MAC = "52:54:00:5b:57:5c"
+CONTROLLER_PORT = 140
+CONTROLLER_DST_MAC = "52:54:00:5b:57:5c"
 
-# SESSION_ID = 12
-# TRUNCATE_SIZE = 128
-
-# mirror_fwd_tbl = p4.Ingress.mirror_fwd
-# mirror_fwd_tbl.clear()
-
-# for net in live_nets:
-#     mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=MIRROR_IN_PORT, 
-#                                            internal_ip=net[0],
-#                                            internal_ip_mask=net[1],
-#                                            ing_mir_ses=SESSION_ID,
-#                                            dst_mac = PROXY_DST_MAC)
-
-# mirror_fwd_tbl.add_with_set_ing_mirror(ingress_port=INCOMING_PORT, 
-#                                        ing_mir_ses=13,
-#                                        dst_mac = PROXY_DST_MAC)
-
-# mirror_cfg_tbl = bfrt.mirror.cfg
-# mirror_cfg_tbl.clear()
-# mirror_cfg_tbl.add_with_normal(sid=SESSION_ID,
-#                                session_enable=True,
-#                                direction="INGRESS",
-#                                ucast_egress_port=MIRROR_OUT_PORT,
-#                                ucast_egress_port_valid=True,
-#                                max_pkt_len=TRUNCATE_SIZE)
-# mirror_cfg_tbl.add_with_normal(sid=13,
-#                                session_enable=True,
-#                                direction="INGRESS",
-#                                ucast_egress_port=MIRROR_OUT_PORT,
-#                                ucast_egress_port_valid=True,
-#                                max_pkt_len=TRUNCATE_SIZE)
+fwd_controller_tbl = p4.Ingress.fwd_controller_tbl
+fwd_controller_tbl.clear()
+fwd_controller_tbl.add_with_send_to_controller(ether_type=0x0800,
+                                              dst_mac=CONTROLLER_DST_MAC,
+                                              out_port=CONTROLLER_PORT)
 
 
 bfrt.complete_operations()

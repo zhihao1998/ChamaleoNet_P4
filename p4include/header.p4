@@ -67,18 +67,7 @@ header udp_h {
 
 /***********************  U S E R - D E F I N E D   H E A D E R S  ************************/
 
-header mirror_bridged_metadata_h {
-    bit<8>  pkt_type;
-    bit<48> dst_mac;
-}
-
-header mirror_h {
-    bit<8> pkt_type;
-    bit<48> dst_mac;
-}
-
 struct my_ingress_headers_t {
-    mirror_bridged_metadata_h mirror_bridged_md;
     ethernet_h          ethernet;
     ipv4_h              ipv4;
     icmp_h              icmp;
@@ -97,10 +86,6 @@ struct my_ingress_metadata_t {
     bit<16>  internal_port;
     bit<32>  external_ip;
     bit<16>  external_port;
-
-    MirrorId_t ing_mir_ses;
-    bit<8> pkt_type;
-    bit<48> dst_mac;
 }
 
 typedef my_ingress_headers_t my_egress_headers_t;

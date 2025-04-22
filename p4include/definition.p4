@@ -4,7 +4,6 @@
 
 /*Type Defination*/
 const bit<16> ETHERTYPE_IPV4 = 0x0800;
-const bit<16> ETHERTYPE_HONEYPOT = 0x0801;
 
 const bit<8> IP_PROTO_ICMP = 1;
 const bit<8> IP_PROTO_TCP = 6;
@@ -25,15 +24,9 @@ const PortId_t CPU_PORT_1 = 64;
 const PortId_t CPU_PORT_2 = 66; 
 
 /*Table Sizing*/
-const int ACTIVE_HOST_TABLE_SIZE = 500000;
+const int ACTIVE_HOST_TABLE_SIZE = 800000;
 
 /* Entry Idle Timeout */
 /* check readme for more information */
 const int ENTRY_IDLE_TIMEOUT_NBIT_POLL = 1; 
 const int ENTRY_IDLE_TIMEOUT_NBIT_NOTIFICATION = 0; 
-
-const bit<3> MIRROR_TYPE_I2E = 1;
-const bit<3> MIRROR_TYPE_E2E = 2;
-
-const bit<8> PKT_TYPE_MIRROR = 1;
-const bit<8> PKT_TYPE_NORMAL = 2;

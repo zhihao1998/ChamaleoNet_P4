@@ -195,6 +195,10 @@ control Ingress(
     apply {
         if (hdr.ipv4.isValid())
         {
+            if ((hdr.ipv4.protocol != IP_PROTO_ICMP) && (hdr.ipv4.protocol != IP_PROTO_TCP) && (hdr.ipv4.protocol != IP_PROTO_UDP))
+            {
+                drop();
+            }
             if (internal_ip_check.apply().hit) 
             {
                 if (!whitelist_tbl.apply().hit)
@@ -209,7 +213,6 @@ control Ingress(
             else 
             {
                 // drop all external-external packets
-                // TODO: Fix for anonymized packets
                 drop();
             }
         }

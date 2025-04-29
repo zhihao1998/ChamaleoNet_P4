@@ -81,8 +81,8 @@ pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABL
 pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
 # front panel port 31/0 directly connected to 32/0
-pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
-pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# pm.port.add(DEV_PORT=136, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
 # P/PT means pipe / port. This is the number you are supposed to use in
 # all ucli cmds e.g., ibuf -d 0 -p 1 -m 8 is used to check counters relative 
@@ -102,11 +102,16 @@ white_list = white_list[:white_num]
 
 # Internal Nets
 internal_nets = [('154.200.0.0', '255.255.0.0')]
-# internal_nets = [('130.192.0.0', '255.255.0.0')]
-
+INCOMING_PORT = 160
 # Darknet Nets
 darknet_nets = [('130.192.166.0', '255.255.255.0'),
                 ('130.192.167.0', '255.255.255.0')]
+
+# internal_nets = [('130.192.0.0', '255.255.0.0')]
+# INCOMING_PORT = 140
+
+# darknet_nets = []
+
 
 # Live Nets
 live_nets = []
@@ -139,7 +144,7 @@ for net in darknet_nets:
 
 ################ Add Mirroring (Only Live Nets) ######################
 
-INCOMING_PORT = 160
+
 
 CONTROLLER_PORT = 140
 CONTROLLER_DST_MAC = "52:54:00:5b:57:5c"

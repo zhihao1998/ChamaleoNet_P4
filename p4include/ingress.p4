@@ -177,10 +177,25 @@ control Ingress(
         ig_tm_md.ucast_egress_port = out_port;
     }
 
+    
+    ActionProfile(16) send_to_controller_ap;
+    Hash<bit<8>>(HashAlgorithm_t.CRC16) hash_fn;
+    ActionSelector(action_profile = send_to_controller_ap,
+                   hash = hash_fn,
+                   mode = SelectorMode_t.FAIR,
+                   max_group_size = 16,
+                   num_groups = 16) send_to_controller_selector;
+
     table fwd_controller_tbl {
         key = {
             // Just a placeholder, do not need the key
             hdr.ethernet.ether_type: exact;
+
+            meta.internal_ip: selector;
+            meta.external_ip: selector;
+            meta.internal_port: selector;
+            meta.external_port: selector;
+            meta.ip_protocol: selector;
         }
 
         actions = {
@@ -188,7 +203,8 @@ control Ingress(
             NoAction;
         }
 
-        size = 128;
+        implementation = send_to_controller_selector;
+        size = 16;
         const default_action = NoAction();
     }
 

@@ -100,21 +100,17 @@ with open(os.path.join(os.path.dirname(os.path.abspath(__file__)), 'remote_white
         white_list.append(line.replace("\n", "").split(","))
 white_list = white_list[:white_num]
 
-# Internal Nets
-internal_nets = [('154.200.0.0', '255.255.0.0')]
-INCOMING_PORT = 160
-# Darknet Nets
-darknet_nets = [('130.192.166.0', '255.255.255.0'),
+############## Live traffic mode #####################
+# uncomment this for live
+internal_nets = [('154.200.0.0', '255.255.0.0'),
+                 ('130.192.166.0', '255.255.255.0'),
                 ('130.192.167.0', '255.255.255.0')]
+INCOMING_PORT = 160
 
+############## Replay traffic mode ###################
+# uncomment this for replay
 # internal_nets = [('130.192.0.0', '255.255.0.0')]
 # INCOMING_PORT = 140
-
-# darknet_nets = []
-
-
-# Live Nets
-live_nets = []
 
 ################ Add White list ######################
 
@@ -137,24 +133,33 @@ for net in internal_nets:
     internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
 
 
-for net in darknet_nets:
-    internal_ip_check_tbl.add_with_set_src_internal(src_addr=net[0], src_addr_mask=net[1], MATCH_PRIORITY=10)
-    internal_ip_check_tbl.add_with_set_dst_internal(dst_addr=net[0], dst_addr_mask=net[1], MATCH_PRIORITY=10)
-
-
-################ Add Mirroring (Only Live Nets) ######################
-
-
-
+################ Add forwarding ######################
 CONTROLLER_PORT = 140
-CONTROLLER_DST_MAC = "52:54:00:5b:57:5c"
+CONTROLLER_1_DST_MAC = "52:54:00:5b:57:5c"
+CONTROLLER_2_DST_MAC = "52:54:00:fa:1c:6d"
 
-fwd_controller_tbl = p4.Ingress.fwd_controller_tbl
-fwd_controller_tbl.clear()
-fwd_controller_tbl.add_with_send_to_controller(ether_type=0x0800,
-                                              dst_mac=CONTROLLER_DST_MAC,
-                                              out_port=CONTROLLER_PORT)
+# Then the control plane can add groups to the action selector ipv4_ecmp, and members 
+# to those groups, where each member is a reference to an entry in ipv4_ecmp_ap. 
+# When programming the table entries in table ipv4_lpm, the control plane does not 
+# include the fields with match_kind selector in the key. The selector fields are 
+# instead given as input to the hash_fn extern. In the example below, the fields 
+# {hdr.ipv4.srcAddr, hdr.ipv4.dstAddr, hdr.ipv4.protocol} are passed as input 
+# to the CRC16 hash algorithm used for member selection by the action selector.
 
+ap  = p4.Ingress.send_to_controller_ap
+sel = p4.Ingress.send_to_controller_selector
+tbl = p4.Ingress.fwd_controller_tbl
+tbl.clear()
+sel.clear()
+ap.clear()
+
+
+ap.add_with_send_to_controller(ACTION_MEMBER_ID=0, dst_mac=CONTROLLER_1_DST_MAC, out_port=CONTROLLER_PORT)
+ap.add_with_send_to_controller(ACTION_MEMBER_ID=1, dst_mac=CONTROLLER_2_DST_MAC, out_port=CONTROLLER_PORT)
+
+sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True, True], MAX_GROUP_SIZE=16)
+
+tbl.add(ether_type=0x0800, SELECTOR_GROUP_ID=0)
 
 bfrt.complete_operations()
 

@@ -77,8 +77,6 @@ pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABL
 # front panel port 2/0 directly attached to server
 pm.port.add(DEV_PORT=140, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
-# front panel port 28/0 directly attached to anonymizer 
-pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
 # front panel port 31/0 directly connected to 32/0
 # pm.port.add(DEV_PORT=128, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
@@ -106,6 +104,9 @@ internal_nets = [('154.200.0.0', '255.255.0.0'),
                  ('130.192.166.0', '255.255.255.0'),
                 ('130.192.167.0', '255.255.255.0')]
 INCOMING_PORT = 160
+# front panel port 28/0 directly attached to anonymizer 
+pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+
 
 ############## Replay traffic mode ###################
 # uncomment this for replay
@@ -158,6 +159,7 @@ ap.add_with_send_to_controller(ACTION_MEMBER_ID=0, dst_mac=CONTROLLER_1_DST_MAC,
 ap.add_with_send_to_controller(ACTION_MEMBER_ID=1, dst_mac=CONTROLLER_2_DST_MAC, out_port=CONTROLLER_PORT)
 
 sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True, True], MAX_GROUP_SIZE=16)
+# sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0], ACTION_MEMBER_STATUS=[True], MAX_GROUP_SIZE=16)
 
 tbl.add(ether_type=0x0800, SELECTOR_GROUP_ID=0)
 

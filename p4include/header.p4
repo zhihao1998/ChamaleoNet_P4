@@ -86,6 +86,23 @@ struct my_ingress_metadata_t {
     bit<16>  internal_port;
     bit<32>  external_ip;
     bit<16>  external_port;
+
+    bit<1>  packet_dir; // 0 Inbound 1 Outbound
+
+    bit<2> bloom_epoch;
+
+    // hash indices (0..(BLOOM_WORDS*32-1))
+    bit<32> bloom_idx0;
+    bit<32> bloom_idx1;
+    bit<32> bloom_idx2;
+    bit<32> bloom_idx3;
+
+    // query results
+    bit<1>  bloom_hit;
+    bit<1>  bloom_hit_0; // and
+    bit<1>  bloom_hit_1; // OR across epochs
+    bit<1>  bloom_hit_2; // OR across epochs
+    bit<1>  bloom_hit_3; // OR across epochs
 }
 
 typedef my_ingress_headers_t my_egress_headers_t;

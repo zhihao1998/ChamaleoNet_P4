@@ -20,13 +20,18 @@ const bit<8> IPV4_MIN_HEAD_LEN = 20;
 const bit<8> UDP_HEADER_LEN = 8;
 
 /* Port Number */
-const PortId_t CPU_PORT_1 = 64; 
-const PortId_t CPU_PORT_2 = 66; 
+// const PortId_t CPU_PORT_1 = 64; 
+// const PortId_t CPU_PORT_2 = 66; 
 
 /*Table Sizing*/
-const int ACTIVE_HOST_TABLE_SIZE = 800000;
+const int ACTIVE_HOST_TABLE_SIZE = 80000;
 
 /* Entry Idle Timeout */
 /* check readme for more information */
 const int ENTRY_IDLE_TIMEOUT_NBIT_POLL = 1; 
 const int ENTRY_IDLE_TIMEOUT_NBIT_NOTIFICATION = 0; 
+
+typedef bit<1> BLOOM_WORD_BITS;
+const bit<32> BLOOM_WORDS = 4194304;
+const int BLOOM_HASH_NUM = 4;
+const int BLOOM_ROTATION_NUM = 4;

@@ -57,6 +57,7 @@ parser IngressParser(packet_in        pkt,
         pkt.extract(hdr.icmp);
         meta.src_port = 0;
         meta.dst_port = 0;
+        meta.internal_port = 0;
         transition accept;
     }
     state parse_tcp {
@@ -91,11 +92,177 @@ control Ingress(
     inout ingress_intrinsic_metadata_for_deparser_t  ig_dprsr_md,
     inout ingress_intrinsic_metadata_for_tm_t        ig_tm_md)
 {
+#define BLOOM_REG(i) \
+    Register<BLOOM_WORD_BITS, bit<32>>(BLOOM_WORDS) bloom_group0_epoch##i; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, BLOOM_WORD_BITS>(bloom_group0_epoch##i) bloom_group0_read_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value, out BLOOM_WORD_BITS out_value){ \
+            out_value = reg_value; \
+        } \
+    }; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group0_epoch##i) bloom_group0_set_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value) { \
+            reg_value = 1; \
+        } \
+    }; \
+    Register<BLOOM_WORD_BITS, bit<32>>(BLOOM_WORDS) bloom_group1_epoch##i; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, BLOOM_WORD_BITS>(bloom_group1_epoch##i) bloom_group1_read_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value, out BLOOM_WORD_BITS out_value){ \
+            out_value = reg_value; \
+        } \
+    }; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group1_epoch##i) bloom_group1_set_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value) { \
+            reg_value = 1; \
+        } \
+    }; \
+    Register<BLOOM_WORD_BITS, bit<32>>(BLOOM_WORDS) bloom_group2_epoch##i; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, BLOOM_WORD_BITS>(bloom_group2_epoch##i) bloom_group2_read_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value, out BLOOM_WORD_BITS out_value){ \
+            out_value = reg_value; \
+        } \
+    }; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group2_epoch##i) bloom_group2_set_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value) { \
+            reg_value = 1; \
+        } \
+    }; \
+    Register<BLOOM_WORD_BITS, bit<32>>(BLOOM_WORDS) bloom_group3_epoch##i; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, BLOOM_WORD_BITS>(bloom_group3_epoch##i) bloom_group3_read_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value, out BLOOM_WORD_BITS out_value){ \
+            out_value = reg_value; \
+        } \
+    }; \
+    RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group3_epoch##i) bloom_group3_set_epoch##i = { \
+        void apply(inout BLOOM_WORD_BITS reg_value) { \
+            reg_value = 1; \
+        } \
+    };\
+    action bloom_read_group0_epoch##i() { \
+        bit<1> hit = bloom_group0_read_epoch##i.execute(meta.bloom_idx0); \
+        meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
+    } \
+    table bloom_read_tbl0_epoch##i{ \
+        actions = {bloom_read_group0_epoch##i;} \
+        const default_action = bloom_read_group0_epoch##i(); \
+        size = 1; \
+    } \
+    action bloom_read_group1_epoch##i() { \
+        bit<1> hit = bloom_group1_read_epoch##i.execute(meta.bloom_idx1); \
+        meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
+    } \
+    table bloom_read_tbl1_epoch##i{ \
+        actions = {bloom_read_group1_epoch##i;} \
+        const default_action = bloom_read_group1_epoch##i(); \
+        size = 1; \
+    } \
+    action bloom_read_group2_epoch##i() { \
+        bit<1> hit = bloom_group2_read_epoch##i.execute(meta.bloom_idx2); \
+        meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
+    } \
+    table bloom_read_tbl2_epoch##i{ \
+        actions = {bloom_read_group2_epoch##i;} \
+        const default_action = bloom_read_group2_epoch##i(); \
+        size = 1; \
+    } \
+    action bloom_read_group3_epoch##i() { \
+        bit<1> hit = bloom_group3_read_epoch##i.execute(meta.bloom_idx3); \
+        meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
+    } \
+    table bloom_read_tbl3_epoch##i{ \
+        actions = {bloom_read_group3_epoch##i;} \
+        const default_action = bloom_read_group3_epoch##i(); \
+        size = 1; \
+    } \
 
-    action send_to_cpu() {
-        ig_tm_md.ucast_egress_port = CPU_PORT_1;
+
+    CRCPolynomial<bit<32>>(32w0x04C11DB7, // polynomial
+                           true,          // reversed
+                           false,         // use msb?
+                           false,         // extended?
+                           32w0x00000000, // initial shift register value
+                           32w0xFFFFFFFF  // result xor
+                           ) poly0;
+    Hash<bit<32>>(HashAlgorithm_t.CUSTOM, poly0) hash0;
+
+    CRCPolynomial<bit<32>>(32w0x1EDC6F41, // polynomial
+                           true,          // reversed
+                           false,         // use msb?
+                           false,         // extended?
+                           32w0x00000000, // initial shift register value
+                           32w0xFFFFFFFF  // result xor
+                           ) poly1;
+    Hash<bit<32>>(HashAlgorithm_t.CUSTOM, poly1) hash1;
+
+    CRCPolynomial<bit<32>>(32w0xA833982B, // polynomial
+                           true,          // reversed
+                           false,         // use msb?
+                           false,         // extended?
+                           32w0x00000000, // initial shift register value
+                           32w0xFFFFFFFF  // result xor
+                           ) poly2;
+    Hash<bit<32>>(HashAlgorithm_t.CUSTOM, poly2) hash2;
+
+    CRCPolynomial<bit<32>>(32w0x814141AB, // polynomial
+                           false,          // reversed
+                           false,         // use msb?
+                           false,         // extended?
+                           32w0x00000000, // initial shift register value
+                           32w0x00000000  // result xor
+                           ) poly3;
+    Hash<bit<32>>(HashAlgorithm_t.CUSTOM, poly3) hash3;
+
+    action hash0_apply() {
+        meta.bloom_idx0 = hash0.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+    }
+    table hash0_tbl {
+        actions = {hash0_apply;}
+        const default_action = hash0_apply();
+        size = 1;
     }
 
+    action hash1_apply() {
+        meta.bloom_idx1 = hash1.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+    }
+    table hash1_tbl {
+        actions = {hash1_apply;}
+        const default_action = hash1_apply();
+        size = 1;
+    }
+
+    action hash2_apply() {
+        meta.bloom_idx2 = hash2.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+    }
+    table hash2_tbl {
+        actions = {hash2_apply;}
+        const default_action = hash2_apply();
+        size = 1;
+    }
+
+    action hash3_apply() {
+        meta.bloom_idx3 = hash3.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+    }
+    table hash3_tbl {
+        actions = {hash3_apply;}
+        const default_action = hash3_apply();
+        size = 1;
+    }
+
+    // Define bloom filters
+    BLOOM_REG(0)
+    // BLOOM_REG(1)
+    // BLOOM_REG(2)
+    // BLOOM_REG(3)
+
+    // table used to set the current bloom_epoch by controller
+    action set_epoch(bit<2> e) { meta.bloom_epoch = e; }
+    table bloom_epoch_tbl {
+        key = { hdr.ethernet.ether_type : exact; }
+        actions = { set_epoch; }
+        size = 1;
+        const default_action = set_epoch(0);
+    }
+
+    // Actions for packet output 
     action set_egress_port(PortId_t port) {
         ig_tm_md.ucast_egress_port = port;
     }
@@ -104,6 +271,7 @@ control Ingress(
         ig_dprsr_md.drop_ctl = 1;
     }
 
+    // Exact match table for persistent entries
     @idletime_precision(ENTRY_IDLE_TIMEOUT_NBIT_NOTIFICATION)
     table active_host_tbl {
         key = {
@@ -114,7 +282,6 @@ control Ingress(
         
         actions = {
             set_egress_port; 
-            send_to_cpu;
             drop;
             NoAction;
         }
@@ -128,6 +295,7 @@ control Ingress(
         meta.internal_port = meta.src_port;
         meta.external_ip = meta.dst_ip;
         meta.external_port = meta.dst_port;
+        meta.packet_dir = 1; // Outbound
     }
 
     action set_dst_internal() {
@@ -135,6 +303,7 @@ control Ingress(
         meta.internal_port = meta.dst_port;        
         meta.external_ip = meta.src_ip;
         meta.external_port = meta.src_port;
+        meta.packet_dir = 0; // Inbound
     }
 
     table internal_ip_check {
@@ -145,7 +314,6 @@ control Ingress(
         actions = {
             set_src_internal();
             set_dst_internal();
-            send_to_cpu();
             NoAction;
         }
         size = 10;
@@ -221,8 +389,23 @@ control Ingress(
                 {
                     if(!active_host_tbl.apply().hit)
                     {
-                        // Set dst_mac and outport
-                        fwd_controller_tbl.apply();
+                        /* Check if bloom filter is hit */
+                        hash0_tbl.apply();
+                        hash1_tbl.apply();
+                        hash2_tbl.apply();
+                        hash3_tbl.apply();
+                        bloom_epoch_tbl.apply();
+                        bloom_read_tbl0_epoch0.apply();
+                        bloom_read_tbl1_epoch0.apply();
+                        bloom_read_tbl2_epoch0.apply();
+                        bloom_read_tbl3_epoch0.apply();
+                        if (meta.bloom_hit == 0) {
+                            // the first time to see this flow or unanswered, send to controller
+                            fwd_controller_tbl.apply();
+                        } else {
+                            // answered flows, drop
+                            drop();
+                        }
                     }
                 }
             }

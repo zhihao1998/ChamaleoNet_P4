@@ -87,7 +87,7 @@ struct my_ingress_metadata_t {
     bit<32>  external_ip;
     bit<16>  external_port;
 
-    bit<1>  packet_dir; // 0 Inbound 1 Outbound
+    bit<1>  bloom_op; // 0 read 1 set
 
     bit<2> bloom_epoch;
 
@@ -98,7 +98,7 @@ struct my_ingress_metadata_t {
     bit<32> bloom_idx3;
 
     // query results
-    bit<1>  bloom_hit;
+    bit<3>  bloom_hit;
     bit<1>  bloom_hit_0; // and
     bit<1>  bloom_hit_1; // OR across epochs
     bit<1>  bloom_hit_2; // OR across epochs

@@ -154,7 +154,6 @@ tbl.clear()
 sel.clear()
 ap.clear()
 
-
 ap.add_with_send_to_controller(ACTION_MEMBER_ID=0, dst_mac=CONTROLLER_1_DST_MAC, out_port=CONTROLLER_PORT)
 ap.add_with_send_to_controller(ACTION_MEMBER_ID=1, dst_mac=CONTROLLER_2_DST_MAC, out_port=CONTROLLER_PORT)
 
@@ -162,6 +161,8 @@ sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True
 # sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0], ACTION_MEMBER_STATUS=[True], MAX_GROUP_SIZE=16)
 
 tbl.add(ether_type=0x0800, SELECTOR_GROUP_ID=0)
+
+################ Add bloom filter ######################
 
 bfrt.complete_operations()
 

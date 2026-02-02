@@ -141,37 +141,65 @@ control Ingress(
         bit<1> hit = bloom_group0_read_epoch##i.execute(meta.bloom_idx0); \
         meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
     } \
-    table bloom_read_tbl0_epoch##i{ \
-        actions = {bloom_read_group0_epoch##i;} \
-        const default_action = bloom_read_group0_epoch##i(); \
-        size = 1; \
+    action bloom_set_group0_epoch##i() { \
+        bloom_group0_set_epoch##i.execute(meta.bloom_idx0); \
+    } \
+    table bloom_op_tbl0_epoch##i { \
+        key = {meta.bloom_op: exact;} \
+        actions = {bloom_read_group0_epoch##i; bloom_set_group0_epoch##i;} \
+        const entries = { \
+            (0): bloom_read_group0_epoch##i(); \
+            (1): bloom_set_group0_epoch##i(); \
+        } \
+        size = 2; \
     } \
     action bloom_read_group1_epoch##i() { \
         bit<1> hit = bloom_group1_read_epoch##i.execute(meta.bloom_idx1); \
         meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
     } \
-    table bloom_read_tbl1_epoch##i{ \
-        actions = {bloom_read_group1_epoch##i;} \
-        const default_action = bloom_read_group1_epoch##i(); \
-        size = 1; \
+    action bloom_set_group1_epoch##i() { \
+        bloom_group1_set_epoch##i.execute(meta.bloom_idx1); \
+    } \
+    table bloom_op_tbl1_epoch##i { \
+        key = {meta.bloom_op: exact;} \
+        actions = {bloom_read_group1_epoch##i; bloom_set_group1_epoch##i;} \
+        const entries = { \
+            (0): bloom_read_group1_epoch##i(); \
+            (1): bloom_set_group1_epoch##i(); \
+        } \
+        size = 2; \
     } \
     action bloom_read_group2_epoch##i() { \
         bit<1> hit = bloom_group2_read_epoch##i.execute(meta.bloom_idx2); \
         meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
     } \
-    table bloom_read_tbl2_epoch##i{ \
-        actions = {bloom_read_group2_epoch##i;} \
-        const default_action = bloom_read_group2_epoch##i(); \
-        size = 1; \
+    action bloom_set_group2_epoch##i() { \
+        bloom_group2_set_epoch##i.execute(meta.bloom_idx2); \
+    } \
+    table bloom_op_tbl2_epoch##i { \
+        key = {meta.bloom_op: exact;} \
+        actions = {bloom_read_group2_epoch##i; bloom_set_group2_epoch##i;} \
+        const entries = { \
+            (0): bloom_read_group2_epoch##i(); \
+            (1): bloom_set_group2_epoch##i(); \
+        } \
+        size = 2; \
     } \
     action bloom_read_group3_epoch##i() { \
         bit<1> hit = bloom_group3_read_epoch##i.execute(meta.bloom_idx3); \
         meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
     } \
-    table bloom_read_tbl3_epoch##i{ \
-        actions = {bloom_read_group3_epoch##i;} \
-        const default_action = bloom_read_group3_epoch##i(); \
-        size = 1; \
+    action bloom_set_group3_epoch##i() { \
+        bloom_group3_set_epoch##i.execute(meta.bloom_idx3); \
+    } \
+    table bloom_op_tbl3_epoch##i { \
+        key = {meta.bloom_op: exact;} \
+        actions = {bloom_read_group3_epoch##i; bloom_set_group3_epoch##i;} \
+        const entries = { \
+            (0): bloom_read_group3_epoch##i(); \
+            (1): bloom_set_group3_epoch##i(); \
+        } \
+        size = 2; \
     } \
 
 
@@ -212,7 +240,7 @@ control Ingress(
     Hash<bit<32>>(HashAlgorithm_t.CUSTOM, poly3) hash3;
 
     action hash0_apply() {
-        meta.bloom_idx0 = hash0.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+        meta.bloom_idx0 = hash0.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
     }
     table hash0_tbl {
         actions = {hash0_apply;}
@@ -221,7 +249,7 @@ control Ingress(
     }
 
     action hash1_apply() {
-        meta.bloom_idx1 = hash1.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+        meta.bloom_idx1 = hash1.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
     }
     table hash1_tbl {
         actions = {hash1_apply;}
@@ -230,7 +258,7 @@ control Ingress(
     }
 
     action hash2_apply() {
-        meta.bloom_idx2 = hash2.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+        meta.bloom_idx2 = hash2.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
     }
     table hash2_tbl {
         actions = {hash2_apply;}
@@ -239,7 +267,7 @@ control Ingress(
     }
 
     action hash3_apply() {
-        meta.bloom_idx3 = hash3.get({meta.internal_ip, meta.internal_port, meta.ip_protocol});
+        meta.bloom_idx3 = hash3.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
     }
     table hash3_tbl {
         actions = {hash3_apply;}
@@ -249,17 +277,26 @@ control Ingress(
 
     // Define bloom filters
     BLOOM_REG(0)
-    // BLOOM_REG(1)
-    // BLOOM_REG(2)
-    // BLOOM_REG(3)
+    BLOOM_REG(1)
+    BLOOM_REG(2)
+    BLOOM_REG(3)
 
-    // table used to set the current bloom_epoch by controller
+    // table used to set the current bloom_epoch (by bfrt)
     action set_epoch(bit<2> e) { meta.bloom_epoch = e; }
     table bloom_epoch_tbl {
         key = { hdr.ethernet.ether_type : exact; }
         actions = { set_epoch; }
         size = 1;
         const default_action = set_epoch(0);
+    }
+
+    // table to check the operations for bloom filter (by bfrt)
+    action set_bloom_read() { meta.bloom_op = 0; }
+    action set_bloom_set() { meta.bloom_op = 1; }
+    table bloom_op_set_tbl {
+        key = { ig_intr_md.ingress_port: exact; }
+        actions = { set_bloom_read; set_bloom_set; }
+        size = 2;
     }
 
     // Actions for packet output 
@@ -295,7 +332,6 @@ control Ingress(
         meta.internal_port = meta.src_port;
         meta.external_ip = meta.dst_ip;
         meta.external_port = meta.dst_port;
-        meta.packet_dir = 1; // Outbound
     }
 
     action set_dst_internal() {
@@ -303,7 +339,6 @@ control Ingress(
         meta.internal_port = meta.dst_port;        
         meta.external_ip = meta.src_ip;
         meta.external_port = meta.src_port;
-        meta.packet_dir = 0; // Inbound
     }
 
     table internal_ip_check {
@@ -395,10 +430,62 @@ control Ingress(
                         hash2_tbl.apply();
                         hash3_tbl.apply();
                         bloom_epoch_tbl.apply();
-                        bloom_read_tbl0_epoch0.apply();
-                        bloom_read_tbl1_epoch0.apply();
-                        bloom_read_tbl2_epoch0.apply();
-                        bloom_read_tbl3_epoch0.apply();
+                        bloom_op_set_tbl.apply();
+                        // initialize bloom_hit
+                        meta.bloom_hit_0 = 1;
+                        meta.bloom_hit_1 = 1;
+                        meta.bloom_hit_2 = 1;
+                        meta.bloom_hit_3 = 1;
+                        // decide which epochs to execute
+                        bool do_e0 = false;
+                        bool do_e1 = false;
+                        bool do_e2 = false;
+                        bool do_e3 = false;
+
+                        if (meta.bloom_op == 0) {
+                            // read from all epochs
+                            do_e0 = true; do_e1 = true; do_e2 = true; do_e3 = true;
+                        } else {
+                            // write only to current epoch
+                            if (meta.bloom_epoch == 0)      do_e0 = true;
+                            else if (meta.bloom_epoch == 1) do_e1 = true;
+                            else if (meta.bloom_epoch == 2) do_e2 = true;
+                            else if (meta.bloom_epoch == 3) do_e3 = true;
+                             // drop / mark packets used to set the bloom op
+                            meta.bloom_hit = 1;
+                        }
+
+                        // apply each table at most once in this control
+                        if (do_e0) {
+                            bloom_op_tbl0_epoch0.apply();
+                            bloom_op_tbl1_epoch0.apply();
+                            bloom_op_tbl2_epoch0.apply();
+                            bloom_op_tbl3_epoch0.apply();
+                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_0;
+                        }
+                        if (do_e1) {
+                            bloom_op_tbl0_epoch1.apply();
+                            bloom_op_tbl1_epoch1.apply();
+                            bloom_op_tbl2_epoch1.apply();
+                            bloom_op_tbl3_epoch1.apply();
+                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_1;
+                        }
+                        if (do_e2) {
+                            bloom_op_tbl0_epoch2.apply();
+                            bloom_op_tbl1_epoch2.apply();
+                            bloom_op_tbl2_epoch2.apply();
+                            bloom_op_tbl3_epoch2.apply();
+                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_2;
+                        }
+                        if (do_e3) {
+                            bloom_op_tbl0_epoch3.apply();
+                            bloom_op_tbl1_epoch3.apply();
+                            bloom_op_tbl2_epoch3.apply();
+                            bloom_op_tbl3_epoch3.apply();
+                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_3;
+                        }
+
+                        // packet actions
                         if (meta.bloom_hit == 0) {
                             // the first time to see this flow or unanswered, send to controller
                             fwd_controller_tbl.apply();

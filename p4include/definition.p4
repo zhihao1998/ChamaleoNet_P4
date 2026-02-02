@@ -24,7 +24,7 @@ const bit<8> UDP_HEADER_LEN = 8;
 // const PortId_t CPU_PORT_2 = 66; 
 
 /*Table Sizing*/
-const int ACTIVE_HOST_TABLE_SIZE = 80000;
+const int ACTIVE_HOST_TABLE_SIZE = 20000;
 
 /* Entry Idle Timeout */
 /* check readme for more information */

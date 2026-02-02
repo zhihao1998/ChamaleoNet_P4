@@ -100,18 +100,18 @@ white_list = white_list[:white_num]
 
 ############## Live traffic mode #####################
 # uncomment this for live
-internal_nets = [('154.200.0.0', '255.255.0.0'),
-                 ('130.192.166.0', '255.255.255.0'),
-                ('130.192.167.0', '255.255.255.0')]
-INCOMING_PORT = 160
-# front panel port 28/0 directly attached to anonymizer 
-pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
+# internal_nets = [('154.200.0.0', '255.255.0.0'),
+#                  ('130.192.166.0', '255.255.255.0'),
+#                 ('130.192.167.0', '255.255.255.0')]
+# INCOMING_PORT = 160
+# # front panel port 28/0 directly attached to anonymizer 
+# pm.port.add(DEV_PORT=160, SPEED="BF_SPEED_100G", FEC="BF_FEC_TYP_RS", PORT_ENABLE=True)
 
 
 ############## Replay traffic mode ###################
 # uncomment this for replay
-# internal_nets = [('130.192.0.0', '255.255.0.0')]
-# INCOMING_PORT = 140
+internal_nets = [('130.192.0.0', '255.255.0.0')]
+INCOMING_PORT = 140
 
 ################ Add White list ######################
 
@@ -161,10 +161,6 @@ sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True
 # sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0], ACTION_MEMBER_STATUS=[True], MAX_GROUP_SIZE=16)
 
 tbl.add(ether_type=0x0800, SELECTOR_GROUP_ID=0)
-
-################ Add bloom filter ######################
-
-bfrt.complete_operations()
 
 
 # Final programming

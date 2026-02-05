@@ -89,6 +89,7 @@ struct my_ingress_metadata_t {
 
     bit<1>  bloom_op; // 0 read 1 set
 
+    bit<1> bloom_dummy_key;
     bit<2> bloom_epoch;
 
     // hash indices (0..(BLOOM_WORDS*32-1))

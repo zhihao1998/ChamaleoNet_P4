@@ -69,7 +69,6 @@ CPU_PORT_1 = 64
 
 ################ Add ports ##########################
 
-# TODO from yaml
 # enable internal CPU ports
 pm.port.add(DEV_PORT=64, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
 pm.port.add(DEV_PORT=66, SPEED="BF_SPEED_10G", FEC="BF_FEC_TYP_NONE", PORT_ENABLE=True)
@@ -157,11 +156,15 @@ ap.clear()
 ap.add_with_send_to_controller(ACTION_MEMBER_ID=0, dst_mac=CONTROLLER_1_DST_MAC, out_port=CONTROLLER_PORT)
 ap.add_with_send_to_controller(ACTION_MEMBER_ID=1, dst_mac=CONTROLLER_2_DST_MAC, out_port=CONTROLLER_PORT)
 
-sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True, True], MAX_GROUP_SIZE=16)
-# sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0], ACTION_MEMBER_STATUS=[True], MAX_GROUP_SIZE=16)
+# sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0, 1], ACTION_MEMBER_STATUS=[True, True], MAX_GROUP_SIZE=16)
+sel.add(SELECTOR_GROUP_ID=0, ACTION_MEMBER_ID=[0], ACTION_MEMBER_STATUS=[True], MAX_GROUP_SIZE=16)
 
 tbl.add(ether_type=0x0800, SELECTOR_GROUP_ID=0)
 
+############### Add bloom filter epoch ####################
+bloom_epoch_tbl = p4.Ingress.bloom_epoch_tbl
+bloom_epoch_tbl.clear()
+bloom_epoch_tbl.add_with_set_epoch(bloom_dummy_key=0, epoch=0)
 
 # Final programming
 print("""

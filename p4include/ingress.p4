@@ -23,6 +23,7 @@ parser IngressParser(packet_in        pkt,
         meta.internal_port = 0;
         meta.external_ip = 0;
         meta.external_port = 0;
+        meta.bloom_dummy_key = 0;
 
         transition select(hdr.ethernet.ether_type) {
             ETHERTYPE_IPV4:     parse_ipv4;
@@ -118,7 +119,7 @@ control Ingress(
     }; \
     RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group0_epoch##i) bloom_group0_set_epoch##i = { \
         void apply(inout BLOOM_WORD_BITS reg_value) { \
-            reg_value = 1; \
+            reg_value = 1w1; \
         } \
     }; \
     Register<BLOOM_WORD_BITS, bit<32>>(BLOOM_WORDS) bloom_group1_epoch##i; \
@@ -129,15 +130,18 @@ control Ingress(
     }; \
     RegisterAction<BLOOM_WORD_BITS, bit<32>, void>(bloom_group1_epoch##i) bloom_group1_set_epoch##i = { \
         void apply(inout BLOOM_WORD_BITS reg_value) { \
-            reg_value = 1; \
+            reg_value = 1w1; \
         } \
     }; \
+    Counter<bit<32>, bit<1>>(2, CounterType_t.PACKETS) bloom_counter_group0_epoch_##i; \
+    Counter<bit<32>, bit<1>>(2, CounterType_t.PACKETS) bloom_counter_group1_epoch_##i; \
     action bloom_read_group0_epoch##i() { \
         bit<1> hit = bloom_group0_read_epoch##i.execute(meta.bloom_idx0); \
         meta.bloom_hit_##i = meta.bloom_hit_##i & hit; \
     } \
     action bloom_set_group0_epoch##i() { \
         bloom_group0_set_epoch##i.execute(meta.bloom_idx0); \
+        bloom_counter_group0_epoch_##i.count(1w0); \
     } \
     table bloom_op_tbl0_epoch##i { \
         key = {meta.bloom_op: exact;} \
@@ -154,6 +158,7 @@ control Ingress(
     } \
     action bloom_set_group1_epoch##i() { \
         bloom_group1_set_epoch##i.execute(meta.bloom_idx1); \
+        bloom_counter_group1_epoch_##i.count(1w0); \
     } \
     table bloom_op_tbl1_epoch##i { \
         key = {meta.bloom_op: exact;} \
@@ -163,8 +168,7 @@ control Ingress(
             (1): bloom_set_group1_epoch##i(); \
         } \
         size = 2; \
-    } \
-
+    }
 
     CRCPolynomial<bit<32>>(32w0x04C11DB7, // polynomial
                            true,          // reversed
@@ -186,7 +190,7 @@ control Ingress(
 
 
     action hash0_apply() {
-        meta.bloom_idx0 = hash0.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
+        meta.bloom_idx0 = hash0.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) & (BLOOM_WORDS-1);
     }
     table hash0_tbl {
         actions = {hash0_apply;}
@@ -195,7 +199,7 @@ control Ingress(
     }
 
     action hash1_apply() {
-        meta.bloom_idx1 = hash1.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) % BLOOM_WORDS;
+        meta.bloom_idx1 = hash1.get({meta.internal_ip, meta.internal_port, meta.ip_protocol}) & (BLOOM_WORDS-1);
     }
     table hash1_tbl {
         actions = {hash1_apply;}
@@ -209,12 +213,12 @@ control Ingress(
     BLOOM_REG(1)
 
     // table used to set the current bloom_epoch (by bfrt)
-    action set_epoch(bit<2> e) { meta.bloom_epoch = e; }
+    action set_epoch(bit<2> epoch) { meta.bloom_epoch = epoch; }
     table bloom_epoch_tbl {
-        key = { hdr.ethernet.ether_type : exact; }
-        actions = { set_epoch; }
-        size = 1;
-        const default_action = set_epoch(0);
+        key = { meta.bloom_dummy_key : exact; }
+        actions = { set_epoch; NoAction; }
+        size = 2;
+        const default_action = NoAction();
     }
 
     // Actions for packet output 
@@ -224,6 +228,10 @@ control Ingress(
 
     action drop() {
         ig_dprsr_md.drop_ctl = 1;
+    }
+
+    action send_to_cpu() {
+        ig_tm_md.ucast_egress_port = CPU_PORT_1;
     }
 
     // Exact match table for persistent entries
@@ -336,54 +344,56 @@ control Ingress(
             {
                 drop();
             }
-            if (internal_ip_check.apply().hit) 
-            {
-                if (!whitelist_tbl.apply().hit)
-                {
-                    if(!active_host_tbl.apply().hit)
-                    {
-                        /* Check if bloom filter is hit */
-                        hash0_tbl.apply();
-                        hash1_tbl.apply();
-                        bloom_epoch_tbl.apply();
-                        // initialize bloom_hit
-                        meta.bloom_hit_0 = 1;
-                        meta.bloom_hit_1 = 1;
-                        // decide which epochs to execute
-                        bool do_e0 = false;
-                        bool do_e1 = false;
+            if (internal_ip_check.apply().hit) {
+                if (!whitelist_tbl.apply().hit) {
+                    if(!active_host_tbl.apply().hit) {
+                        if (bloom_epoch_tbl.apply().hit) {
+                            // bloom_epoch_tbl should always hit
 
-                        if (meta.bloom_op == 0) {
-                            // read from all epochs
-                            do_e0 = true; do_e1 = true;
-                        } else {
-                            // write only to current epoch
-                            if (meta.bloom_epoch == 0)      do_e0 = true;
-                            else if (meta.bloom_epoch == 1) do_e1 = true;
-                             // drop / mark packets used to set the bloom op
-                            meta.bloom_hit = 1;
-                        }
+                            /* Check if bloom filter is hit */
+                            hash0_tbl.apply();
+                            hash1_tbl.apply();
+                            
+                            // initialize bloom_hit
+                            meta.bloom_hit_0 = 1;
+                            meta.bloom_hit_1 = 1;
+                            // decide which epochs to execute
+                            bool do_e0 = false;
+                            bool do_e1 = false;
 
-                        // apply each table at most once in this control
-                        if (do_e0) {
-                            bloom_op_tbl0_epoch0.apply();
-                            bloom_op_tbl1_epoch0.apply();
-                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_0;
-                        }
-                        if (do_e1) {
-                            bloom_op_tbl0_epoch1.apply();
-                            bloom_op_tbl1_epoch1.apply();
-                            meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_1;
-                        }
-                        
+                            if (meta.bloom_op == 0) {
+                                // read from all epochs
+                                do_e0 = true; 
+                                do_e1 = true;
+                                meta.bloom_hit = 3w0;
+                            } else {
+                                // write only to current epoch
+                                if (meta.bloom_epoch == 2w0)      do_e0 = true;
+                                else if (meta.bloom_epoch == 2w1) do_e1 = true;
+                                // drop / mark packets used to set the bloom op
+                                meta.bloom_hit = 1;
+                            }
 
-                        // packet actions
-                        if (meta.bloom_hit == 0) {
-                            // the first time to see this flow or unanswered, send to controller
-                            fwd_controller_tbl.apply();
-                        } else {
-                            // answered flows, drop
-                            drop();
+                            // apply each table at most once in this control
+                            if (do_e0) {
+                                bloom_op_tbl0_epoch0.apply();
+                                bloom_op_tbl1_epoch0.apply();
+                                meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_0;
+                            }
+                            if (do_e1) {
+                                bloom_op_tbl0_epoch1.apply();
+                                bloom_op_tbl1_epoch1.apply();
+                                meta.bloom_hit = meta.bloom_hit + (bit<3>)meta.bloom_hit_1;
+                            }
+                            
+                            // packet actions
+                            if (meta.bloom_hit == 0) {
+                                // the first time to see this flow or unanswered, send to controller
+                                fwd_controller_tbl.apply();
+                            } else {
+                                // answered flows, drop
+                                drop();
+                            }
                         }
                     }
                 }

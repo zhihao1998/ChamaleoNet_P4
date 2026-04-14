@@ -25,7 +25,7 @@ const PortId_t CPU_PORT_1 = 64;
 // const PortId_t CPU_PORT_2 = 66; 
 
 /*Table Sizing*/
-const int ACTIVE_HOST_TABLE_SIZE = 20000;
+const int ACTIVE_HOST_TABLE_SIZE = 200000;
 
 /* Entry Idle Timeout */
 /* check readme for more information */

@@ -1,0 +1,37 @@
+{
+  "traffic_mode": "replay",
+  "modes": {
+    "live": {
+      "internal_nets": [
+        ["154.200.0.0", "255.255.0.0"],
+        ["130.192.166.0", "255.255.255.0"],
+        ["130.192.167.0", "255.255.255.0"]
+      ],
+      "incoming_dev_port": 160,
+      "add_incoming_port": true
+    },
+    "replay": {
+      "internal_nets": [
+        ["130.192.0.0", "255.255.0.0"]
+      ],
+      "incoming_dev_port": 140,
+      "delete_dev_ports": [160]
+    }
+  },
+  "controller": {
+    "out_port": 140,
+    "dst_macs": [
+      "52:54:00:3a:cf:79",
+      "52:54:00:33:c4:72",
+      "52:54:00:63:f9:2c",
+      "52:54:00:48:4a:1e",
+      "52:54:00:08:c8:11",
+      "52:54:00:15:d5:55",
+      "52:54:00:d0:38:45",
+      "52:54:00:20:ef:fd"
+    ],
+    "selector_group_id": 0,
+    "selector_max_group_size": 16,
+    "selector_member_indices": [0, 1, 2, 3, 4, 5, 6, 7]
+  }
+}
